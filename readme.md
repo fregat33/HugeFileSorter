@@ -1,7 +1,7 @@
 HugeFileSorter
 =
-Requirements 
-* .net7
+Requirements: .net7
+
 Quick start
 -
 build solution
