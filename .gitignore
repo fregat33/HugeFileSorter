@@ -1,0 +1,40 @@
+.idea
+
+# .NET Core build output
+bin/
+obj/
+
+# Visual Studio files
+.vs/
+*.userprefs
+*.suo
+*.sln.docstates
+
+# NuGet package directories
+packages/
+
+# MSTest Test Results
+TestResults/
+
+# Resharper
+_resharper*/
+
+# Rider
+.idea/
+*.sln.iml
+
+# Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+nupkg/
+paket-files/
+paket-files-cache/
