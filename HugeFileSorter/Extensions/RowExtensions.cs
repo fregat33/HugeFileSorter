@@ -2,12 +2,13 @@
 
 public static class RowExtensions
 {
-    public static RawRow ToRaw(this Row preparedRow)
+    public static Row Copy(this Row row)
     {
-        return new RawRow(preparedRow.Text);
+        var rowTextCopy = row.Text.ToArray();
+        return row with { Text = rowTextCopy };
     }
-
-    public static Row ToRow(this RawRow row)
+    
+    public static Row ToRow(this RawRow row, byte stringEnd, byte[] newLine)
     {
         var span = row.Text.Span;
         var separatorIndex = span.IndexOf((byte)'.');
@@ -16,7 +17,15 @@ public static class RowExtensions
 
         var skip = separatorIndex + 2; // ". " skipped
         
-        return new Row(row.Text, num, skip);
+        if (span.LastIndexOf(stringEnd) > 0)
+            return new Row(row.Text, num, skip);
+        
+        var text = new byte[row.Text.Length + newLine.Length];
+        
+        span.CopyTo(text);
+        newLine.CopyTo(text, row.Text.Length);
+
+        return new Row(text, num, skip);
     }
     
     private static long ConvertAsciiBytesToLong(ReadOnlySpan<byte> bytes, int separatorIndex)

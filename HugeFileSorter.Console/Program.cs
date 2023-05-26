@@ -1,16 +1,22 @@
 ﻿using HugeFileSorter;
+using HugeFileSorter.Extensions;
 using HugeFileSorter.Repositories;
 
 var config = GetConfig();
+var repositoryConfig = new RepositoryConfig
+{
+    SourceFile = config.inputFile,
+    TargetFile = config.outputFile
+};
 
-var repository = new FileRepository(config.inputFile, config.outputFile);
+var repository = new FileRepository(repositoryConfig);
 var service = new Service(config.chunkSize, repository);
 
 await service.ExecuteAsync();
 
 static (int chunkSize, string inputFile, string outputFile) GetConfig()
 {
-    var chunkSize = 200 * 1024 * 1024;
+    var chunkSize = 200.ToMB();
     var inputFile = "input.txt";
     var outputFile = "output.txt";
 
@@ -24,7 +30,7 @@ static (int chunkSize, string inputFile, string outputFile) GetConfig()
             switch (i)
             {
                 case 0:
-                    chunkSize = int.Parse(currentArg) * 1024 * 1024;
+                    chunkSize = int.Parse(currentArg).ToMB();
                     break;
                 case 1:
                     outputFile = currentArg;

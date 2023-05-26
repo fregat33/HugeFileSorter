@@ -17,6 +17,7 @@ class Program
         var generator = new FruitGenerator(random, config.maxStringLength);
         using var writer = new StreamWriter(config.fileName);
         var counter = 0;
+        
         do
         {
             var number = random.Next(10000);
@@ -33,11 +34,11 @@ class Program
         Console.WriteLine($"File {config.fileName} generated (rows: {counter})");
     }
 
-    private static (int maxSize, int maxStringLength, string fileName) GetConfig(string[] args)
+    private static (long maxSize, int maxStringLength, string fileName) GetConfig(string[] args)
     {
         var fileName = "input.txt";
-        var maxSize = 1024 * 1024 * 1000;
-        var maxStringLength = 10;
+        long maxSize = 1000L * 1024 * 1024;
+        var maxStringLength = 13;
 
         try
         {
@@ -47,7 +48,7 @@ class Program
                 switch (i)
                 {
                     case 0:
-                        maxSize = int.Parse(currentArg) * 1024 * 1024;
+                        maxSize = long.Parse(currentArg) * 1024 * 1024;
                         break;
                     case 1:
                         maxStringLength = int.Parse(currentArg);

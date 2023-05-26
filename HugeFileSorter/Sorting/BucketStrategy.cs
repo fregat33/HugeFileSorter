@@ -4,68 +4,61 @@ namespace HugeFileSorter.Sorting;
 
 public class BucketStrategy
 {
-    private readonly int _bucketsCount;
-    private readonly List<Row>[] _buckets;
+    private const int BucketsCount = 28;
+    private readonly List<Row>[] _buckets = new List<Row>[BucketsCount];
     private readonly IComparer<Row> _comparer;
 
     public BucketStrategy(IComparer<Row> comparer)
     {
         _comparer = comparer;
-        _bucketsCount = 28;
-        var buckets = new List<Row>[_bucketsCount];
-
-        for (var i = 0; i < _bucketsCount; ++i)
+        
+        for (var i = 0; i < BucketsCount; ++i)
         {
-            buckets[i] = new List<Row>();
+            _buckets[i] = new List<Row>();
         }
-
-        _buckets = buckets;
     }
 
     public void Add(Row row)
     {
-        // _bag.Add(row);
         var firstChar = row.FirstChar;
         var first = firstChar - 96;
         if (first < 0)
             first = firstChar - 64;
 
-        var idx = Math.Clamp(first, 0, _bucketsCount);
+        var idx = Math.Clamp(first, 0, BucketsCount);
         var bucket = _buckets[idx];
-        lock (bucket)
-        {
-            bucket.Add(row);
-        }
+        
+        bucket.Add(row);
     }
 
-    public async Task<IEnumerable<Row>> Sort()
+    public IEnumerable<Row> Sort()
     {
         var count = _buckets.Sum(e => e.Count);
 
         var sortedArray = ArrayPool<Row>.Shared.Rent(count);
 
-        var accum = 0;
-        var positionBuckets = _buckets.Select((b, i) => (i, b, accum += b.Count)).ToArray();
+        var positionSum = 0;
+        var positionBuckets = _buckets
+            .Select((rows, idx) => (idx, rows, currentPosition: positionSum += rows.Count))
+            .ToArray();
 
         var options = new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount - 1 };
         
-        await Parallel.ForEachAsync(positionBuckets, options, (b, c) =>
+        Parallel.ForEach(positionBuckets, options, (bucket, _) =>
         {
-            var currentCount = b.b.Count;
+            var currentCount = bucket.rows.Count;
             if (currentCount == 0)
-                return default;
+                return;
 
             var idx = 0;
-            if (b.i > 0)
+            if (bucket.idx > 0)
             {
-                idx = positionBuckets[b.i - 1].Item3;
+                idx = positionBuckets[bucket.idx - 1].currentPosition;
             }
 
-            b.b.CopyTo(sortedArray, idx);
+            bucket.rows.CopyTo(sortedArray, idx);
 
             Array.Sort(sortedArray, idx, currentCount, _comparer);
-
-            return default;
         });
 
         return GetSorted(sortedArray, count);
@@ -73,7 +66,7 @@ public class BucketStrategy
     
     public void Clear()
     {
-        for (var i = 0; i < _bucketsCount; ++i)
+        for (var i = 0; i < BucketsCount; ++i)
         {
             _buckets[i].Clear();
         }

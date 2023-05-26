@@ -6,6 +6,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HugeFileSorter.Console", "H
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HugeFileSorter.Generator", "HugeFileSorter.Generator\HugeFileSorter.Generator.csproj", "{5C90C2EB-253B-4CB0-B730-9E36898FAA6F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HugeFileSorter.Tests", "HugeFileSorter.Tests\HugeFileSorter.Tests.csproj", "{7D3E256E-E097-4944-8619-5848CAD1C2F7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -24,5 +26,9 @@ Global
 		{5C90C2EB-253B-4CB0-B730-9E36898FAA6F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5C90C2EB-253B-4CB0-B730-9E36898FAA6F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5C90C2EB-253B-4CB0-B730-9E36898FAA6F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7D3E256E-E097-4944-8619-5848CAD1C2F7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7D3E256E-E097-4944-8619-5848CAD1C2F7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7D3E256E-E097-4944-8619-5848CAD1C2F7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7D3E256E-E097-4944-8619-5848CAD1C2F7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

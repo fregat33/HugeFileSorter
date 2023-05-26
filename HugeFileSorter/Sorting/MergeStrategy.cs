@@ -1,30 +1,24 @@
-﻿using System.Diagnostics;
-using System.Threading.Channels;
+﻿using System.Threading.Channels;
 
 namespace HugeFileSorter.Sorting;
 
 public class MergeStrategy
 {
-
     private readonly IComparer<Row> _comparer;
-    private readonly ChannelWriter<Row> _producer;
 
-    public MergeStrategy(ChannelWriter<Row> producer, IComparer<Row> comparer)
+    public MergeStrategy(IComparer<Row> comparer)
     {
-        _producer = producer;
         _comparer = comparer;
     }
 
-    public async Task MergeAsync(IReadOnlyCollection<IEnumerable<Row>> sortedCollections)
+    public async Task MergeAsync(ChannelWriter<Row> producer, IReadOnlyCollection<IEnumerable<Row>> sortedCollections)
     {
         var heap = new List<(IEnumerator<Row> reader, int fileIndex)>();
-
         try
         {
             for (var i = 0; i < sortedCollections.Count; i++)
             {
                 var enumerator = sortedCollections.ElementAt(i).GetEnumerator();
-
                 if (enumerator.MoveNext())
                 {
                     heap.Add((enumerator, i));
@@ -36,15 +30,13 @@ public class MergeStrategy
             while (heap.Count > 0)
             {
                 var (reader, _) = heap[0];
-
-                await _producer.WriteAsync(reader.Current);
+                await producer.WriteAsync(reader.Current);
 
                 if (!reader.MoveNext())
                 {
                     reader.Dispose();
                     heap.RemoveAt(0);
                 }
-
                 Heapify(heap);
             }
         }
@@ -54,6 +46,7 @@ public class MergeStrategy
             {
                 item.reader?.Dispose();
             }
+            producer.Complete();
         }
     }
 

@@ -7,16 +7,21 @@ namespace HugeFileSorter;
 
 public class Service
 {
+    private const int DefaultChannelCapacity = 1;
     private readonly int _chunkSize;
+    private int _lastChunkId;
+
     private readonly FileRepository _repository;
-    private int _chunksCounter;
+
     private readonly BucketStrategy _buckets;
-    private readonly RowComparer _comparer;
+    private readonly MergeStrategy _mergeStrategy;
 
     public Service(int chunkSize, FileRepository repository)
     {
-        _comparer = new RowComparer();
-        _buckets = new BucketStrategy(_comparer);
+        var comparer = new RowComparer();
+        _buckets = new BucketStrategy(comparer);
+        _mergeStrategy = new MergeStrategy(comparer);
+
         _chunkSize = chunkSize;
         _repository = repository;
     }
@@ -25,62 +30,76 @@ public class Service
     {
         Console.WriteLine($"{DateTime.UtcNow} Started");
         var sw = Stopwatch.StartNew();
-        
+
         await SourceToSortedChunksAsync();
         await MergeChunksToTargetAsync();
-        
+
         sw.Stop();
         Console.WriteLine($"{DateTime.UtcNow} Finished (elapsed: {sw.Elapsed})");
     }
 
     private async Task SourceToSortedChunksAsync()
     {
-        var channelOptions = new BoundedChannelOptions(1)
+        var channelOptions = new BoundedChannelOptions(DefaultChannelCapacity)
         {
             SingleWriter = true,
             SingleReader = true
         };
-        var workerChannel = Channel.CreateBounded<WorkerTask>(channelOptions);
-        var main = ReadSourceToByChunks(workerChannel);
-        var works = Worker(workerChannel);
+        
+        var workerChannel = Channel.CreateBounded<RowsChunk>(channelOptions);
+        var main = ReadSourceToByChunks(workerChannel.Writer);
+        var works = Worker(workerChannel.Reader);
         await Task.WhenAll(main, works);
     }
-    
-    private async Task ReadSourceToByChunks(ChannelWriter<WorkerTask> channelWriter)
+
+    private async Task ReadSourceToByChunks(ChannelWriter<RowsChunk> producer)
     {
         foreach (var rowsChunk in _repository.GetSourceRows(_chunkSize))
         {
-            var chunkId = ++_chunksCounter;
+            _lastChunkId = rowsChunk.Id;
 
-            foreach (var row in rowsChunk)
+            var rowsCounter = 0;
+            foreach (var row in rowsChunk.Rows)
             {
+                ++rowsCounter;
                 _buckets.Add(row);
             }
 
-            var sortedChunk = await _buckets.Sort();
+            var sortedRows = _buckets.Sort();
 
-            Console.WriteLine($"{DateTime.UtcNow} ReadSourceToByChunks chunk created (chunkId: {chunkId})");
-            var writeChunkTask = new WorkerTask { Id = chunkId, Rows = sortedChunk };
-            await channelWriter.WriteAsync(writeChunkTask);
+            Console.WriteLine(
+                $"{DateTime.UtcNow} ReadSourceToByChunks chunk created (chunkId: {rowsChunk.Id}, rows: {rowsCounter})");
+
+            var sortedChunk = rowsChunk with { Rows = sortedRows };
+
+            await producer.WriteAsync(sortedChunk);
 
             _buckets.Clear();
         }
 
-        channelWriter.Complete();
+        producer.Complete();
     }
 
-    private async Task Worker(ChannelReader<WorkerTask> channelReader)
+    private async Task Worker(ChannelReader<RowsChunk> consumer)
     {
-        await foreach (var workerTask in channelReader.ReadAllAsync())
+        await foreach (var rowsChunk in consumer.ReadAllAsync())
         {
-            var count = _repository.WriteChunk(workerTask.Id, workerTask.Rows);
-            Console.WriteLine($"{DateTime.UtcNow} ReadSourceToByChunks chunk saved (chunkId: {workerTask.Id}, rows: {count})");
+            try
+            {
+                var count = _repository.WriteChunk(rowsChunk.Id, rowsChunk.Rows);
+                Console.WriteLine(
+                    $"{DateTime.UtcNow} ReadSourceToByChunks chunk saved (chunkId: {rowsChunk.Id}, rows: {count})");
+            }
+            finally
+            {
+                rowsChunk.Release();
+            }
         }
     }
 
     private async Task MergeChunksToTargetAsync()
     {
-        var channelOptions = new BoundedChannelOptions(5)
+        var channelOptions = new BoundedChannelOptions(DefaultChannelCapacity)
         {
             SingleWriter = true,
             SingleReader = true
@@ -95,27 +114,18 @@ public class Service
         Console.WriteLine($"{DateTime.UtcNow} WriteTargetAsync started");
 
         var counter = await _repository.WriteTargetAsync(channel.ReadAllAsync());
-        
+
         Console.WriteLine($"{DateTime.UtcNow} WriteTargetAsync finished (rows: {counter})");
     }
 
     private async Task MergeChunksAsync(ChannelWriter<Row> channel)
     {
-        var merge = new MergeStrategy(channel, _comparer);
-
-        var sortedChunks = Enumerable.Range(1, _chunksCounter)
+        var sortedChunks = Enumerable.Range(1, _lastChunkId)
             .Select(id => _repository.ReadChunk(id))
             .ToArray();
 
         Console.WriteLine($"{DateTime.UtcNow} MergeChunksAsync (chunks: {sortedChunks.Length})");
-        await merge.MergeAsync(sortedChunks);
 
-        channel.Complete();
-    }
-
-    private record struct WorkerTask
-    {
-        public int Id { get; set; }
-        public IEnumerable<Row> Rows { get; set; }
+        await _mergeStrategy.MergeAsync(channel, sortedChunks);
     }
 }
