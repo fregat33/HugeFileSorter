@@ -26,7 +26,7 @@ public class FileRepository
 
         using var memoryMappedFile = MemoryMappedFile.CreateFromFile(fileInfo.FullName, FileMode.Open);
         
-        var offset = 0;
+        var offset = 0L;
         var chunkCounter = 0;
         
         while (true)

@@ -35,7 +35,7 @@ static (int chunkSize, string inputFile, string outputFile) GetConfig()
                 case 1:
                     outputFile = currentArg;
                     break;
-                case 3:
+                case 2:
                     inputFile = currentArg;
                     break;
                 default:
@@ -45,10 +45,11 @@ static (int chunkSize, string inputFile, string outputFile) GetConfig()
     }
     catch
     {
-        throw new ArgumentException(@$"Expected arguments: [{nameof(chunkSize)} [{nameof(inputFile)} [{nameof(outputFile)}]]]
-1. {nameof(chunkSize)} - output file size (int), default (MB): 200     
-2. {nameof(inputFile)} - output file name (string), default: input.txt 
-3. {nameof(outputFile)} - max row length symbol/words (string), default: output.txt");
+        throw new ArgumentException(
+            @$"Expected arguments: [{nameof(chunkSize)} [{nameof(outputFile)} [{nameof(inputFile)}]]]
+1. {nameof(chunkSize)} - chunk file/memory size (int), default (MB): 200     
+2. {nameof(outputFile)} - max row length symbol/words (string), default: output.txt
+3. {nameof(inputFile)} - output file name (string), default: input.txt");
     }
 
     return (chunkSize, inputFile, outputFile);

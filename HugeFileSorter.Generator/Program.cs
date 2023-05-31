@@ -13,7 +13,7 @@ class Program
 
         var random = new Random();
 
-        var currentSize = 0;
+        var currentSize = 0L;
         var generator = new FruitGenerator(random, config.maxStringLength);
         using var writer = new StreamWriter(config.fileName);
         var counter = 0;
@@ -39,7 +39,7 @@ class Program
         var fileName = "input.txt";
         long maxSize = 1000L * 1024 * 1024;
         var maxStringLength = 13;
-
+        
         try
         {
             for (var i = 0; i < args?.Length; ++i)
@@ -53,7 +53,7 @@ class Program
                     case 1:
                         maxStringLength = int.Parse(currentArg);
                         break;
-                    case 3:
+                    case 2:
                         fileName = currentArg;
                         break;
                     default:
@@ -64,7 +64,7 @@ class Program
         catch
         {
             throw new ArgumentException(@$"Expected arguments: [{nameof(maxSize)} [{nameof(maxStringLength)} [{nameof(fileName)}]]]  
-1. {nameof(maxSize)} - output file size (int), default (MB): 1000           
+1. {nameof(maxSize)} - output file size (long), default (MB): 1000           
 2. {nameof(maxStringLength)} - max row length symbol/words (int), default: 10
 3. {nameof(fileName)} - output file name (string), default: input.txt");
         }

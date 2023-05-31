@@ -13,7 +13,7 @@ public class MergeStrategy
 
     public async Task MergeAsync(ChannelWriter<Row> producer, IReadOnlyCollection<IEnumerable<Row>> sortedCollections)
     {
-        var heap = new List<(IEnumerator<Row> reader, int fileIndex)>();
+        var heap = new List<IEnumerator<Row>>(sortedCollections.Count);
         try
         {
             for (var i = 0; i < sortedCollections.Count; i++)
@@ -21,15 +21,15 @@ public class MergeStrategy
                 var enumerator = sortedCollections.ElementAt(i).GetEnumerator();
                 if (enumerator.MoveNext())
                 {
-                    heap.Add((enumerator, i));
+                    heap.Add(enumerator);
                 }
             }
-
-            heap.Sort((x, y) => _comparer.Compare(x.reader.Current, y.reader.Current));
-
+            
             while (heap.Count > 0)
             {
-                var (reader, _) = heap[0];
+                heap.Sort((x, y) => _comparer.Compare(x.Current, y.Current));
+                
+                var reader = heap[0];
                 await producer.WriteAsync(reader.Current);
 
                 if (!reader.MoveNext())
@@ -37,39 +37,15 @@ public class MergeStrategy
                     reader.Dispose();
                     heap.RemoveAt(0);
                 }
-                Heapify(heap);
             }
         }
         finally
         {
             foreach (var item in heap)
             {
-                item.reader?.Dispose();
+                item.Dispose();
             }
             producer.Complete();
-        }
-    }
-
-    private void Heapify(List<(IEnumerator<Row> reader, int fileIndex)> heap)
-    {
-        var i = 0;
-        while (true)
-        {
-            
-            var left = 2 * i + 1;
-            
-            var right = 2 * i + 2;
-            
-            var smallestIndex = i;
-            
-            if (left < heap.Count && _comparer.Compare(heap[left].reader.Current, heap[smallestIndex].reader.Current) < 0)
-                smallestIndex = left;
-            if (right < heap.Count && _comparer.Compare(heap[right].reader.Current, heap[smallestIndex].reader.Current) < 0)
-                smallestIndex = right;
-            if (smallestIndex == i)
-                break;
-            (heap[i], heap[smallestIndex]) = (heap[smallestIndex], heap[i]);
-            i = smallestIndex;
         }
     }
 }
